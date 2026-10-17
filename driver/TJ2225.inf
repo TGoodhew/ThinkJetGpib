@@ -1,0 +1,43 @@
+; TJ2225.inf - HP 2225 ThinkJet (GPIB) Unidrv minidriver
+;
+; A package-aware GPD minidriver on the inbox Unidrv core driver. The catalog
+; (tj2225.cat) is generated and signed on the target PC by the installer with a
+; local certificate; it is not shipped.
+
+[Version]
+Signature="$Windows NT$"
+Class=Printer
+ClassGUID={4D36E979-E325-11CE-BFC1-08002BE10318}
+Provider=%Provider%
+CatalogFile=tj2225.cat
+DriverVer=10/17/2026,1.0.0.0
+PnpLockdown=1
+
+[Manufacturer]
+%Mfg%=ThinkJet,NTamd64
+
+[ThinkJet.NTamd64]
+"HP 2225 ThinkJet (GPIB)" = TJ2225_Install, ThinkJetGpib_TJ2225
+
+[TJ2225_Install]
+CopyFiles=@TJ2225.GPD
+DataFile=TJ2225.GPD
+CoreDriverSections="{D20EA372-DD35-4950-9ED8-A6335AFE79F0},UNIDRV.OEM,UNIDRV_DATA"
+
+[PrinterPackageInstallation.amd64]
+PackageAware=TRUE
+CoreDriverDependencies={D20EA372-DD35-4950-9ED8-A6335AFE79F0}
+
+[DestinationDirs]
+DefaultDestDir=66000
+
+[SourceDisksNames.amd64]
+1=%DiskName%,,,
+
+[SourceDisksFiles.amd64]
+TJ2225.GPD=1
+
+[Strings]
+Provider="ThinkJetGpib"
+Mfg="HP"
+DiskName="ThinkJetGpib driver files"

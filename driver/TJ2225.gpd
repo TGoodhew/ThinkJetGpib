@@ -1,0 +1,143 @@
+*GPDSpecVersion: "1.0"
+*% ===========================================================================
+*% HP 2225 ThinkJet (HP-IB) - Unidrv minidriver
+*%
+*% Raster-only: Unidrv renders every page (text included) to a 96 x 96 dpi
+*% 1-bit bitmap and sends it with the ThinkJet raster commands that were
+*% confirmed on the bench (GPIB0::5, Oct 2026):
+*%     ESC*rA            start raster graphics
+*%     ESC*b<n>W <data>  one dot row, n bytes, MSB = leftmost dot
+*%     ESC*rB            end raster graphics
+*%     ESC*rB ESC*rA     between bands (seam test)
+*%
+*% The print line is 640 dots = 8.0 in. Master units are 1/96 in, so every
+*% position and size below is in dots.
+*%
+*% Bytes leave the spooler on a Standard TCP/IP RAW port (127.0.0.1:9100)
+*% and the ThinkJetGpib bridge service writes them to the printer over
+*% NI-VISA.
+*% ===========================================================================
+*GPDFileVersion: "1.0"
+*GPDFileName: "TJ2225.GPD"
+*Include: "StdNames.gpd"
+
+*% Must match the model string in TJ2225.inf exactly.
+*ModelName: "HP 2225 ThinkJet (GPIB)"
+*MasterUnits: PAIR(96, 96)
+*PrinterType: SERIAL
+*MaxCopies: 1
+*PrintRate: 150
+*PrintRateUnit: CPS
+
+*% ---- Raster emission ------------------------------------------------------
+*% Every row is sent in full (blank rows too). The driver then never needs a
+*% vertical or horizontal cursor move, which the ThinkJet raster mode has no
+*% command for: each ESC*b row starts at the left margin and advances the
+*% paper one dot row.
+*OutputDataFormat: H_BYTE
+*RasterSendAllData?: TRUE
+*OptimizeLeftBound?: FALSE
+*CursorXAfterSendBlockData: AT_CURSOR_X_ORIGIN
+*CursorYAfterSendBlockData: AUTO_INCREMENT
+
+*% ---- Cursor commands (CR, LF and FF are required by Unidrv) ---------------
+*% Eject each page with FF (the default, FALSE, would try to move down the
+*% page with cursor commands this printer doesn't have).
+*EjectPageWithFF?: TRUE
+*Command: CmdCR { *Cmd: "<0D>" }
+*Command: CmdLF { *Cmd: "<0A>" }
+*Command: CmdFF { *Cmd: "<0C>" }
+
+*% Start each page with the head at column 0.
+*Command: CmdStartPage
+{
+    *Order: PAGE_SETUP.1
+    *Cmd: "<0D>"
+}
+
+*Feature: Orientation
+{
+    *Name: "Orientation"
+    *DefaultOption: PORTRAIT
+    *Option: PORTRAIT
+    {
+        *Name: "Portrait"
+    }
+    *Option: LANDSCAPE_CC270
+    {
+        *Name: "Landscape"
+    }
+}
+
+*Feature: InputBin
+{
+    *Name: "Paper Source"
+    *DefaultOption: TRACTOR
+    *Option: TRACTOR
+    {
+        *Name: "Tractor / Sheet"
+    }
+}
+
+*Feature: Resolution
+{
+    *Name: "Resolution"
+    *DefaultOption: Option1
+    *Option: Option1
+    {
+        *Name: "96 x 96 dots per inch"
+        *DPI: PAIR(96, 96)
+        *TextDPI: PAIR(96, 96)
+        *SpotDiameter: 100
+        *Command: CmdBeginRaster { *Cmd: "<1B>*rA" }
+        *Command: CmdEndRaster { *Cmd: "<1B>*rB" }
+        *Command: CmdSendBlockData { *Cmd: "<1B>*b" %d{NumOfDataBytes}"W" }
+    }
+}
+
+*% Printable width is the 640-dot line, centred on the sheet. The printable
+*% height stops short of the full page so the closing form feed always moves
+*% to the next top-of-form instead of landing on it.
+*Feature: PaperSize
+{
+    *Name: "Paper Size"
+    *DefaultOption: LETTER
+    *Option: LETTER
+    {
+        *rcNameID: =RCID_DMPAPER_SYSTEM_NAME
+        *% 8.5 x 11 in = 816 x 1056 dots; print 8.0 x 10.5 in
+        *PrintableArea: PAIR(640, 1008)
+        *PrintableOrigin: PAIR(88, 24)
+        *CursorOrigin: PAIR(88, 24)
+    }
+    *Option: A4
+    {
+        *rcNameID: =RCID_DMPAPER_SYSTEM_NAME
+        *% 210 x 297 mm = 794 x 1123 dots; print 8.0 x 11.0 in
+        *PrintableArea: PAIR(640, 1056)
+        *PrintableOrigin: PAIR(77, 24)
+        *CursorOrigin: PAIR(77, 24)
+    }
+}
+
+*Feature: Halftone
+{
+    *Name: "Dithering"
+    *DefaultOption: HT_PATSIZE_AUTO
+    *Option: HT_PATSIZE_AUTO
+    {
+        *Name: "Auto Select"
+    }
+    *Option: HT_PATSIZE_SUPERCELL_M
+    {
+        *Name: "Super Cell"
+    }
+    *Option: HT_PATSIZE_6x6_M
+    {
+        *Name: "Dither 6x6"
+    }
+    *Option: HT_PATSIZE_8x8_M
+    {
+        *Name: "Dither 8x8"
+    }
+}

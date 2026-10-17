@@ -426,3 +426,6 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+
+# ThinkJetGpib: published installer builds go on GitHub Releases, not in git
+dist/
