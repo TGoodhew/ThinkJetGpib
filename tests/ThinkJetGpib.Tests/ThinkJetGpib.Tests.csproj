@@ -11,6 +11,7 @@
   <ItemGroup>
     <Compile Include="..\..\src\ThinkJetGpib\Bridge\JobPump.cs" Link="Bridge\JobPump.cs" />
     <Compile Include="..\..\src\ThinkJetGpib\Bridge\BridgeConfig.cs" Link="Bridge\BridgeConfig.cs" />
+    <Compile Include="..\..\src\ThinkJetGpib\Bridge\DensityTest.cs" Link="Bridge\DensityTest.cs" />
   </ItemGroup>
 
   <ItemGroup>

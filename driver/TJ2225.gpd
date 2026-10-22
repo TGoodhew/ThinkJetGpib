@@ -2,16 +2,24 @@
 *% ===========================================================================
 *% HP 2225 ThinkJet (HP-IB) - Unidrv minidriver
 *%
-*% Raster-only: Unidrv renders every page (text included) to a 96 x 96 dpi
-*% 1-bit bitmap and sends it with the ThinkJet raster commands that were
-*% confirmed on the bench (GPIB0::5, Oct 2026):
+*% Raster-only: Unidrv renders every page (text included) to a 1-bit bitmap
+*% and sends it with the ThinkJet raster commands. ESC*rA, ESC*b<n>W and
+*% ESC*rB were confirmed on the bench (GPIB0::5, Oct 2026); the density
+*% commands are from the ThinkJet Service Manual (02225-90079), Table 10-3:
+*%     ESC*r640S         low density:  640 dots per line,  96 x 96 dpi
+*%     ESC*r1280S        high density: 1280 dots per line, 192 x 96 dpi
 *%     ESC*rA            start raster graphics
 *%     ESC*b<n>W <data>  one dot row, n bytes, MSB = leftmost dot
 *%     ESC*rB            end raster graphics
 *%     ESC*rB ESC*rA     between bands (seam test)
 *%
-*% The print line is 640 dots = 8.0 in. Master units are 1/96 in, so every
-*% position and size below is in dots.
+*% The print line is 6.67 in (640 dots at 96 dpi, 1280 at 192 dpi; the
+*% service manual's printable width is 6.7 in). The ink dot is 0.007 in
+*% across, smaller than the 96 dpi pitch (0.0104 in), so at 96 x 96 even
+*% solid black prints as separate dots; at 192 dpi across they overlap.
+*%
+*% Master units are 1/192 in across and 1/96 in down, so every X position
+*% and size below is in high-density dots and every Y in dot rows.
 *%
 *% Bytes leave the spooler on a Standard TCP/IP RAW port (127.0.0.1:9100)
 *% and the ThinkJetGpib bridge service writes them to the printer over
@@ -23,7 +31,7 @@
 
 *% Must match the model string in TJ2225.inf exactly.
 *ModelName: "HP 2225 ThinkJet (GPIB)"
-*MasterUnits: PAIR(96, 96)
+*MasterUnits: PAIR(192, 96)
 *PrinterType: SERIAL
 *MaxCopies: 1
 *PrintRate: 150
@@ -82,22 +90,34 @@
 *Feature: Resolution
 {
     *Name: "Resolution"
-    *DefaultOption: Option1
+    *% Each band selects its density before ESC*rA, so a page never inherits
+    *% whatever an earlier job or text-mode print left the printer in.
+    *DefaultOption: Option2
     *Option: Option1
     {
         *Name: "96 x 96 dots per inch"
         *DPI: PAIR(96, 96)
         *TextDPI: PAIR(96, 96)
         *SpotDiameter: 100
-        *Command: CmdBeginRaster { *Cmd: "<1B>*rA" }
+        *Command: CmdBeginRaster { *Cmd: "<1B>*r640S<1B>*rA" }
+        *Command: CmdEndRaster { *Cmd: "<1B>*rB" }
+        *Command: CmdSendBlockData { *Cmd: "<1B>*b" %d{NumOfDataBytes}"W" }
+    }
+    *Option: Option2
+    {
+        *Name: "192 x 96 dots per inch"
+        *DPI: PAIR(192, 96)
+        *TextDPI: PAIR(192, 96)
+        *SpotDiameter: 100
+        *Command: CmdBeginRaster { *Cmd: "<1B>*r1280S<1B>*rA" }
         *Command: CmdEndRaster { *Cmd: "<1B>*rB" }
         *Command: CmdSendBlockData { *Cmd: "<1B>*b" %d{NumOfDataBytes}"W" }
     }
 }
 
-*% Printable width is the 640-dot line, centred on the sheet. The printable
-*% height stops short of the full page so the closing form feed always moves
-*% to the next top-of-form instead of landing on it.
+*% Printable width is the 6.67 in line (1280 master units), centred on the
+*% sheet. The printable height stops short of the full page so the closing
+*% form feed always moves to the next top-of-form instead of landing on it.
 *Feature: PaperSize
 {
     *Name: "Paper Size"
@@ -105,18 +125,18 @@
     *Option: LETTER
     {
         *rcNameID: =RCID_DMPAPER_SYSTEM_NAME
-        *% 8.5 x 11 in = 816 x 1056 dots; print 8.0 x 10.5 in
-        *PrintableArea: PAIR(640, 1008)
-        *PrintableOrigin: PAIR(88, 24)
-        *CursorOrigin: PAIR(88, 24)
+        *% 8.5 x 11 in = 1632 x 1056 units; print 6.67 x 10.5 in
+        *PrintableArea: PAIR(1280, 1008)
+        *PrintableOrigin: PAIR(176, 24)
+        *CursorOrigin: PAIR(176, 24)
     }
     *Option: A4
     {
         *rcNameID: =RCID_DMPAPER_SYSTEM_NAME
-        *% 210 x 297 mm = 794 x 1123 dots; print 8.0 x 11.0 in
-        *PrintableArea: PAIR(640, 1056)
-        *PrintableOrigin: PAIR(77, 24)
-        *CursorOrigin: PAIR(77, 24)
+        *% 210 x 297 mm = 1587 x 1123 units; print 6.67 x 11.0 in
+        *PrintableArea: PAIR(1280, 1056)
+        *PrintableOrigin: PAIR(154, 24)
+        *CursorOrigin: PAIR(154, 24)
     }
 }
 
