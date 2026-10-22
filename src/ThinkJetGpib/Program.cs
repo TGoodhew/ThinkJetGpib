@@ -5,13 +5,14 @@ using ThinkJetGpib.Setup;
 namespace ThinkJetGpib;
 
 /// <summary>
-/// One exe, four jobs:
+/// One exe, five jobs:
 ///   ThinkJetGpibSetup.exe [--address N] [--resource R] [--port P] [--test-page|--no-test-page] [--quiet]
 ///                                   install (the default)
 ///   ThinkJetGpib.exe --uninstall [--quiet]    remove everything
 ///   ThinkJetGpib.exe --service                run as the bridge service (the SCM starts it this way)
 ///   ThinkJetGpib.exe --console                run the bridge in this window, for debugging
 ///   ThinkJetGpib.exe --print-file FILE        send a file straight to the printer, bypassing Windows
+///   ThinkJetGpib.exe --density-test           print the 96 vs 192 dpi raster comparison page
 /// </summary>
 internal static class Program
 {
@@ -26,6 +27,7 @@ internal static class Program
             }
             if (Has(args, "--console")) return RunConsole();
             if (Value(args, "--print-file") is string file) return PrintFile(file);
+            if (Has(args, "--density-test")) return Print(new MemoryStream(DensityTest.Build()));
             if (Has(args, "--help") || Has(args, "-h") || Has(args, "/?")) return Usage();
 
             var options = new SetupOptions
@@ -61,9 +63,14 @@ internal static class Program
 
     private static int PrintFile(string path)
     {
+        using FileStream input = File.OpenRead(path);
+        return Print(input);
+    }
+
+    private static int Print(Stream input)
+    {
         Log.EchoToConsole = true;
         var config = BridgeConfig.Load(BridgeConfig.DefaultPath);
-        using FileStream input = File.OpenRead(path);
         long bytes = JobPump.Pump(input, () => new VisaPrinterSink(config.Resource, config.TimeoutMs), config.ChunkBytes);
         Console.WriteLine($"Sent {bytes:N0} bytes to {config.Resource}.");
         return 0;
@@ -78,6 +85,7 @@ internal static class Program
             ThinkJetGpib.exe --uninstall [--quiet]   remove the printer, driver, service and certificate
             ThinkJetGpib.exe --console               run the bridge in this window (stop the service first)
             ThinkJetGpib.exe --print-file FILE       send FILE's bytes straight to the printer
+            ThinkJetGpib.exe --density-test          print the 96 vs 192 dpi raster comparison page
             """);
         return 0;
     }
